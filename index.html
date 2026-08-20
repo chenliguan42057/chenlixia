@@ -616,8 +616,9 @@
   <script>
   (function () {
     "use strict";
-    // 故障模式标志：true=模拟故障，false=正常。仅存于内存，刷新即自动恢复为正常。
-    window.__FAULT_MODE__ = false;
+    // 故障模式标志：true=模拟故障，false=正常。仅存于内存。
+    // 当前为「默认故障态」演示：打开即故障，Shift+D 可手动切换；等修复时改回 false 即可。
+    window.__FAULT_MODE__ = true;
     var root = document.documentElement;
 
     // —— 样式：轻微模糊 + 禁用所有指针交互 + 一层淡灰蒙版（更直观地看出“故障”，非按钮） ——
@@ -697,6 +698,9 @@
         console.log("[故障切换] 当前模式：" + (window.__FAULT_MODE__ ? "模拟故障" : "正常"));
       }
     });
+
+    // —— 默认进入故障态（演示用）：加载即应用模糊+灰蒙+“系统异常”气泡 ——
+    if (window.__FAULT_MODE__) setFault(true);
   })();
   </script>
 </body>
