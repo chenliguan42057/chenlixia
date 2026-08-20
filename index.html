@@ -620,30 +620,57 @@
     window.__FAULT_MODE__ = false;
     var root = document.documentElement;
 
-    // —— 样式：轻微模糊 + 禁用所有指针交互（键盘不受影响，Shift+D 仍可切换） ——
+    // —— 样式：轻微模糊 + 禁用所有指针交互 + 一层淡灰蒙版（更直观地看出“故障”，非按钮） ——
     var style = document.createElement("style");
     style.id = "fault-mode-style";
     style.textContent =
       "html.fault-mode body{filter:blur(1.6px);}" +
-      "html.fault-mode,html.fault-mode *{pointer-events:none !important;}";
+      "html.fault-mode,html.fault-mode *{pointer-events:none !important;}" +
+      "html.fault-mode::after{content:'';position:fixed;inset:0;background:rgba(40,40,40,.16);z-index:99998;pointer-events:none;}" +
+      ".fault-toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:99999;" +
+      "background:#c0392b;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;line-height:1.4;" +
+      "box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transition:opacity .25s;pointer-events:none;max-width:86vw;text-align:center;}" +
+      ".fault-toast.show{opacity:1;}";
     document.head.appendChild(style);
 
-    // —— 挂起 fetch：故障模式下让所有网络请求永远 pending，不影响原逻辑 ——
+    // —— 故障提示气泡（非按钮，仅做“系统异常”反馈）挂在 html 下，避免被 body 模糊影响 ——
+    var toast = document.createElement("div");
+    toast.className = "fault-toast";
+    document.documentElement.appendChild(toast);
+    var toastTimer = null;
+    function showToast(msg) {
+      toast.textContent = msg || "系统异常，服务暂不可用";
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 2400);
+    }
+
+    // —— 模拟网络异常：故障模式下大概率挂起卡死，小概率随机延迟后超时报错 ——
     var _origFetch = window.fetch ? window.fetch.bind(window) : null;
     window.fetch = function () {
       if (window.__FAULT_MODE__) {
-        // 返回一个永远不 resolve / reject 的 Promise，使请求“卡住”
-        return new Promise(function () {});
+        if (Math.random() < 0.7) {
+          return new Promise(function () {});              // 永远 pending，请求卡住
+        }
+        var delay = 800 + Math.random() * 2500;            // 随机 0.8~3.3s 后超时
+        return new Promise(function (resolve, reject) {
+          setTimeout(function () {
+            var err = new TypeError("Failed to fetch (模拟网络异常/超时)");
+            err.__simulated = true;
+            reject(err);
+          }, delay);
+        });
       }
       return _origFetch ? _origFetch.apply(null, arguments) : Promise.reject(new Error("fetch unavailable"));
     };
 
-    // —— 拦截点击/触摸：故障模式下阻止所有按钮与元素响应 ——
+    // —— 拦截点击/触摸：故障模式下阻止响应并弹出“系统异常”提示 ——
     function blockInteract(e) {
       if (window.__FAULT_MODE__) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
+        showToast("系统异常，操作失败，请稍后重试");
       }
     }
     document.addEventListener("click", blockInteract, true);
@@ -653,8 +680,13 @@
     // —— 状态切换 ——
     function setFault(on) {
       window.__FAULT_MODE__ = on;
-      if (on) root.classList.add("fault-mode");
-      else root.classList.remove("fault-mode");
+      if (on) {
+        root.classList.add("fault-mode");
+        showToast("系统异常，服务暂不可用");
+      } else {
+        root.classList.remove("fault-mode");
+        toast.classList.remove("show");
+      }
     }
 
     // —— 快捷键：Shift + D 来回切换 ——
