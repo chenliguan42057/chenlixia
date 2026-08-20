@@ -611,5 +611,61 @@
   <script src="./js/charts.js?v=20260802"></script>
   <script src="./js/app.js?v=20260802"></script>
   <script src="./js/ai.js?v=20260802"></script>
+
+  <!-- ===== 隐藏式故障切换演示（仅 Shift+D 触发，不修改任何原有业务逻辑） ===== -->
+  <script>
+  (function () {
+    "use strict";
+    // 故障模式标志：true=模拟故障，false=正常。仅存于内存，刷新即自动恢复为正常。
+    window.__FAULT_MODE__ = false;
+    var root = document.documentElement;
+
+    // —— 样式：轻微模糊 + 禁用所有指针交互（键盘不受影响，Shift+D 仍可切换） ——
+    var style = document.createElement("style");
+    style.id = "fault-mode-style";
+    style.textContent =
+      "html.fault-mode body{filter:blur(1.6px);}" +
+      "html.fault-mode,html.fault-mode *{pointer-events:none !important;}";
+    document.head.appendChild(style);
+
+    // —— 挂起 fetch：故障模式下让所有网络请求永远 pending，不影响原逻辑 ——
+    var _origFetch = window.fetch ? window.fetch.bind(window) : null;
+    window.fetch = function () {
+      if (window.__FAULT_MODE__) {
+        // 返回一个永远不 resolve / reject 的 Promise，使请求“卡住”
+        return new Promise(function () {});
+      }
+      return _origFetch ? _origFetch.apply(null, arguments) : Promise.reject(new Error("fetch unavailable"));
+    };
+
+    // —— 拦截点击/触摸：故障模式下阻止所有按钮与元素响应 ——
+    function blockInteract(e) {
+      if (window.__FAULT_MODE__) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
+    }
+    document.addEventListener("click", blockInteract, true);
+    document.addEventListener("mousedown", blockInteract, true);
+    document.addEventListener("touchstart", blockInteract, true);
+
+    // —— 状态切换 ——
+    function setFault(on) {
+      window.__FAULT_MODE__ = on;
+      if (on) root.classList.add("fault-mode");
+      else root.classList.remove("fault-mode");
+    }
+
+    // —— 快捷键：Shift + D 来回切换 ——
+    document.addEventListener("keydown", function (e) {
+      if (e.shiftKey && (e.key === "D" || e.key === "d") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setFault(!window.__FAULT_MODE__);
+        console.log("[故障切换] 当前模式：" + (window.__FAULT_MODE__ ? "模拟故障" : "正常"));
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
