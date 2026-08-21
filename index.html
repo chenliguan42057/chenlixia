@@ -631,7 +631,16 @@
       ".fault-toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);z-index:99999;" +
       "background:#c0392b;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;line-height:1.4;" +
       "box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transition:opacity .25s;pointer-events:none;max-width:86vw;text-align:center;}" +
-      ".fault-toast.show{opacity:1;}";
+      ".fault-toast.show{opacity:1;}" +
+      // —— 故障态“转圈卡死”加载指示器（纯 CSS 旋转，永久转、不完成，非按钮） ——
+      "html.fault-mode .fault-spinner{display:flex;}" +
+      ".fault-spinner{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:99999;" +
+      "display:none;flex-direction:column;align-items:center;gap:14px;pointer-events:none;}" +
+      ".fault-spinner .ring{width:56px;height:56px;border:6px solid rgba(255,255,255,.35);" +
+      "border-top-color:#fff;border-radius:50%;animation:fault-spin 1s linear infinite;}" +
+      ".fault-spinner .txt{color:#fff;font-size:14px;letter-spacing:2px;" +
+      "background:rgba(20,20,20,.55);padding:7px 14px;border-radius:8px;}" +
+      "@keyframes fault-spin{to{transform:rotate(360deg);}}";
     document.head.appendChild(style);
 
     // —— 故障提示气泡（非按钮，仅做“系统异常”反馈）挂在 html 下，避免被 body 模糊影响 ——
@@ -645,6 +654,12 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 2400);
     }
+
+    // —— 故障态“转圈卡死”指示器：居中转圈 + “系统加载中…”，挂在 html 下避免被 body 模糊 ——
+    var spinner = document.createElement("div");
+    spinner.className = "fault-spinner";
+    spinner.innerHTML = '<div class="ring"></div><div class="txt">系统加载中…</div>';
+    document.documentElement.appendChild(spinner);
 
     // —— 模拟网络异常：故障模式下大概率挂起卡死，小概率随机延迟后超时报错 ——
     var _origFetch = window.fetch ? window.fetch.bind(window) : null;
